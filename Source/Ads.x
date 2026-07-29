@@ -71,6 +71,7 @@
 - (BOOL)canShowThrottledPromoWithFrequencyCaps:(id)arg1 { return NO; }
 %end
 
+/* TEMP-DISABLED
 %hook YTIShowFullscreenInterstitialCommand
 - (BOOL)shouldThrottleInterstitial {
     if (self.hasModalClientThrottlingRules)
@@ -78,6 +79,7 @@
     return %orig;
 }
 %end
+*/
 
 // Survey
 %hook YTSurveyController
