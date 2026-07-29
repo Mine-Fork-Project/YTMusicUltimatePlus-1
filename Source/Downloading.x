@@ -55,7 +55,7 @@ static BOOL YTMU(NSString *key) {
     YTMWatchViewController *watchVC = (YTMWatchViewController *)playingVC.parentViewController;
     YTPlayerViewController *playerVC = watchVC.playerViewController;
     YTPlayerResponse *playerResponse;
-    if ([playerVC respondToSelector:@selector(contentPlayerResponse)]) {
+    if ([playerVC respondsToSelector:@selector(contentPlayerResponse)]) {
         playerResponse = playerVC.contentPlayerResponse;
     } else {
         playerResponse = playerVC.playerResponse;
@@ -96,7 +96,7 @@ static BOOL YTMU(NSString *key) {
 %new
 - (void)downloadAudio:(YTPlayerViewController *)playerVC {
     YTPlayerResponse *playerResponse;
-    if ([playerVC respondToSelector:@selector(contentPlayerResponse)]) {
+    if ([playerVC respondsToSelector:@selector(contentPlayerResponse)]) {
         playerResponse = playerVC.contentPlayerResponse;
     } else {
         playerResponse = playerVC.playerResponse;
@@ -167,7 +167,7 @@ static BOOL YTMU(NSString *key) {
     });
 
     YTPlayerResponse *playerResponse;
-    if ([playerVC respondToSelector:@selector(contentPlayerResponse)]) {
+    if ([playerVC respondsToSelector:@selector(contentPlayerResponse)]) {
         playerResponse = playerVC.contentPlayerResponse;
     } else {
         playerResponse = playerVC.playerResponse;
