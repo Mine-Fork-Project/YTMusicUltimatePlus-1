@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
 #include "Prefs/YTMUltimateSettingsController.h"
 #include "Headers/Localization.h"
+#include "Prefs/YTMUPSettingsDefinitions.h"
 
 @interface YTMAccountButton : UIButton
 - (id)initWithTitle:(id)arg1 identifier:(id)arg2 icon:(id)arg3 actionBlock:(void (^)(BOOL finished))arg4;
@@ -110,5 +111,8 @@
 %end
 
 %ctor {
+    // Register all settings pages into YTMUPSettingsRegistry before any
+    // settings view controller is presented.
+    YTMUPRegisterAllSettings();
     %init(SettingsPage);
 }

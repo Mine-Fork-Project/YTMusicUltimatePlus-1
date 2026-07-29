@@ -1,11 +1,8 @@
-#import <UIKit/UIKit.h>
+#import "YTMUPBaseSettingsController.h"
 #import "../Headers/Localization.h"
+#import "../Headers/YTAssetLoader.h"
 
-@interface OtherSettingsController : UIViewController <UITableViewDelegate, UITableViewDataSource>
-@property (nonatomic, strong) UITableView* tableView;
-@end
-
-@interface YTAssetLoader : NSObject
-- (instancetype)initWithBundle:(NSBundle *)bundle;
-- (UIImage *)imageNamed:(NSString *)image;
+// OtherSettingsController is the class name used by YTMUltimateSettingsController
+// for TabBar settings navigation. Keeping the same name for backward compatibility.
+@interface OtherSettingsController : YTMUPBaseSettingsController
 @end

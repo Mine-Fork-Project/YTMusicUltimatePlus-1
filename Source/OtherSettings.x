@@ -3,127 +3,127 @@
 #import "Headers/YTMWatchViewController.h"
 #import "Headers/YTPivotBarViewController.h"
 #import "Headers/YTPlayabilityResolutionUserActionUIController.h"
+#import "YTMUPKeys.h"
 
 @interface YTPlayabilityResolutionUserActionUIControllerImpl : NSObject
 - (void)confirmAlertDidPressConfirm;
 @end
 
-static BOOL YTMU(NSString *key) {
-    NSDictionary *YTMUltimateDict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"YTMUltimate"];
-    return [YTMUltimateDict[key] boolValue];
-}
-
-// Headers stuff
+// ── Sticky headers ────────────────────────────────────────────────────────────
 %hook YTLightweightCollectionController
 - (void)setUseStickyHeaders:(BOOL)arg1 {
-	YTMU(@"YTMUltimateIsEnabled") && YTMU(@"noStickyHeaders") ? %orig(NO) : %orig;
+    IS_ENABLED(YTMUPKeyEnabled) && IS_ENABLED(YTMUPKeyNoStickyHeaders) ? %orig(NO) : %orig;
 }
 %end
 
 %hook YTMSearchTabViewController
 - (BOOL)shouldUseStickyHeaders {
-	return YTMU(@"YTMUltimateIsEnabled") && YTMU(@"noStickyHeaders") ? NO : %orig;
+    return IS_ENABLED(YTMUPKeyEnabled) && IS_ENABLED(YTMUPKeyNoStickyHeaders) ? NO : %orig;
 }
 %end
 
 %hook YTMTabViewController
 - (BOOL)shouldUseStickyHeaders {
-	return YTMU(@"YTMUltimateIsEnabled") && YTMU(@"noStickyHeaders") ? NO : %orig;
+    return IS_ENABLED(YTMUPKeyEnabled) && IS_ENABLED(YTMUPKeyNoStickyHeaders) ? NO : %orig;
 }
 %end
 
-// Make chip clouds (aka headers) background transparent
 %hook YTMChipCloudView
 - (void)setBackgroundColor:(UIColor *)backgroundColor {
-    YTMU(@"YTMUltimateIsEnabled") && YTMU(@"noStickyHeaders") ? %orig([UIColor clearColor]) : %orig;
+    IS_ENABLED(YTMUPKeyEnabled) && IS_ENABLED(YTMUPKeyNoStickyHeaders) ? %orig([UIColor clearColor]) : %orig;
 }
 %end
 
-// Tab bar stuff
+// ── Tab bar labels ────────────────────────────────────────────────────────────
 %hook YTPivotBarItemView
 - (void)setRenderer:(YTIPivotBarRenderer *)renderer {
     %orig;
-    if (YTMU(@"YTMUltimateIsEnabled") && YTMU(@"noTabBarLabels")) {
+    if (IS_ENABLED(YTMUPKeyEnabled) && IS_ENABLED(YTMUPKeyNoTabBarLabels)) {
         [self.navigationButton setTitle:@"" forState:UIControlStateNormal];
         [self.navigationButton setSizeWithPaddingAndInsets:NO];
     }
 }
 %end
 
-// Remove tabs
+// ── Remove tabs ───────────────────────────────────────────────────────────────
 %hook YTPivotBarView
 - (void)setRenderer:(YTIPivotBarRenderer *)renderer {
-    NSMutableArray <YTIPivotBarSupportedRenderers *> *items = [renderer itemsArray];
+    NSMutableArray<YTIPivotBarSupportedRenderers *> *items = [renderer itemsArray];
     NSDictionary *identifiersToRemove = @{
-        @"FEmusic_home": @(YTMU(@"hideHomeTab")),
-        @"FEmusic_immersive": @(YTMU(@"hideSamplesTab")),
-        @"FEmusic_explore": @(YTMU(@"hideExploreTab")),
-        @"FEmusic_library_landing": @(YTMU(@"hideLibraryTab"))
+        @"FEmusic_home":            @(IS_ENABLED(YTMUPKeyHideHomeTab)),
+        @"FEmusic_immersive":       @(IS_ENABLED(YTMUPKeyHideSamplesTab)),
+        @"FEmusic_explore":         @(IS_ENABLED(YTMUPKeyHideExploreTab)),
+        @"FEmusic_library_landing": @(IS_ENABLED(YTMUPKeyHideLibraryTab)),
     };
     for (NSString *identifier in identifiersToRemove) {
-        BOOL shouldRemoveItem = [identifiersToRemove[identifier] boolValue];
-        NSUInteger index = [items indexOfObjectPassingTest:^BOOL(YTIPivotBarSupportedRenderers *renderers, NSUInteger idx, BOOL *stop) {
-            return shouldRemoveItem && [[[renderers pivotBarItemRenderer] pivotIdentifier] isEqualToString:identifier];
+        BOOL shouldRemove = [identifiersToRemove[identifier] boolValue];
+        NSUInteger idx = [items indexOfObjectPassingTest:^BOOL(YTIPivotBarSupportedRenderers *r, NSUInteger i, BOOL *stop) {
+            return shouldRemove && [[r.pivotBarItemRenderer pivotIdentifier] isEqualToString:identifier];
         }];
-        if (index != NSNotFound) {
-            [items removeObjectAtIndex:index];
-        }
+        if (idx != NSNotFound) [items removeObjectAtIndex:idx];
     }
     %orig;
 }
 %end
 
-// Startup bar
-BOOL isTabSelected = NO;
+// ── Startup tab ───────────────────────────────────────────────────────────────
+static BOOL isTabSelected = NO;
 
 %hook YTPivotBarViewController
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
     if (!isTabSelected) {
-        NSArray *pivotIdentifiers = @[@"FEmusic_home", @"FEmusic_immersive", @"FEmusic_explore", @"FEmusic_library_landing", @"BHdownloadsVC"];
-        NSDictionary *YTMUltimateDict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"YTMUltimate"];
-        [self selectItemWithPivotIdentifier:pivotIdentifiers[[YTMUltimateDict[@"startupPage"] integerValue]]];
+        NSArray *pivotIdentifiers = @[
+            @"FEmusic_home",
+            @"FEmusic_immersive",
+            @"FEmusic_explore",
+            @"FEmusic_library_landing",
+            @"BHdownloadsVC",
+        ];
+        NSInteger index = INTFORVAL(YTMUPKeyStartupPage);
+        if (index >= 0 && index < (NSInteger)pivotIdentifiers.count) {
+            [self selectItemWithPivotIdentifier:pivotIdentifiers[index]];
+        }
         isTabSelected = YES;
     }
 }
 %end
 
+// ── Skip content warning ──────────────────────────────────────────────────────
 %hook YTPlayabilityResolutionUserActionUIController
 - (void)showConfirmAlert {
-    YTMU(@"YTMUltimateIsEnabled") && YTMU(@"skipWarning") ? [self confirmAlertDidPressConfirm] : %orig;
+    IS_ENABLED(YTMUPKeyEnabled) && IS_ENABLED(YTMUPKeySkipWarning) ? [self confirmAlertDidPressConfirm] : %orig;
 }
 %end
 
 %hook YTPlayabilityResolutionUserActionUIControllerImpl
 - (void)showConfirmAlert {
-    YTMU(@"YTMUltimateIsEnabled") && YTMU(@"skipWarning") ? [self confirmAlertDidPressConfirm] : %orig;
+    IS_ENABLED(YTMUPKeyEnabled) && IS_ENABLED(YTMUPKeySkipWarning) ? [self confirmAlertDidPressConfirm] : %orig;
 }
 %end
 
+// ── Miniplayer fixes ──────────────────────────────────────────────────────────
 %hook YTMWatchViewController
 - (void)playbackControllerStateDidChange {
     %orig;
-    // Reset all miniplayer restrictions
-    if ([self respondsToSelector:@selector(resetMiniplayerRestrictions)]) {
+    if ([self respondsToSelector:@selector(resetMiniplayerRestrictions)])
         [self resetMiniplayerRestrictions];
-    }
-    // Disable auto-pause when player minimized to miniplayer
     [self setValue:@(NO) forKey:@"_pauseOnMinimize"];
 }
 %end
 
+// ── Network fixes ─────────────────────────────────────────────────────────────
 %hook YTColdConfig
-- (BOOL)cxClientEnableIosLocalNetworkPermissionWifiFixes { return YES; }
-- (BOOL)cxClientEnableIosLocalNetworkPermissionUsingSockets { return NO; }
+- (BOOL)cxClientEnableIosLocalNetworkPermissionWifiFixes        { return YES; }
+- (BOOL)cxClientEnableIosLocalNetworkPermissionUsingSockets     { return NO;  }
 - (BOOL)cxClientEnableIosLocalNetworkPermissionReliabilityFixes { return YES; }
-- (BOOL)cxClientEnableIosLocalNetworkPermissionPageDelayFix { return YES; }
+- (BOOL)cxClientEnableIosLocalNetworkPermissionPageDelayFix     { return YES; }
 %end
 
 %hook YTHotConfig
 - (BOOL)isPromptForLocalNetworkPermissionsEnabled { return NO; }
 %end
 
-// Stub for server-side request (Search results)
 %hook YTMLightweightOfflineTrackingSectionController
 %new
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {

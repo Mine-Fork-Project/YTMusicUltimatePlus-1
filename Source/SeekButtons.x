@@ -2,96 +2,70 @@
 #import "Headers/YTMNowPlayingView.h"
 #import "Headers/YTAssetLoader.h"
 #import "Headers/Localization.h"
+#import "YTMUPKeys.h"
 
-static NSInteger seekTime() {
-    NSDictionary *YTMUltimateDict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"YTMUltimate"];
-
-    if (YTMUltimateDict && YTMUltimateDict[@"seekTime"]) {
-        NSInteger index = [YTMUltimateDict[@"seekTime"] integerValue];
-        NSArray *seekTimes = @[@0, @10, @20, @30, @60];
-
-        return [seekTimes[index] integerValue];
-    }
-
-    return 0;
-}
-
-static BOOL YTMU(NSString *key) {
-    NSDictionary *YTMUltimateDict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"YTMUltimate"];
-    return [YTMUltimateDict[key] boolValue];
+/// Returns the actual seek interval in seconds (0 = use system default).
+static NSInteger ytmupSeekTime(void) {
+    NSArray<NSNumber *> *seekTimes = @[@0, @10, @20, @30, @60];
+    NSInteger index = INTFORVAL(YTMUPKeySeekTime);
+    if (index < 0 || index >= (NSInteger)seekTimes.count) index = 0;
+    return seekTimes[index].integerValue;
 }
 
 %hook YTMNowPlayingViewController
 - (void)viewDidLoad {
     %orig;
 
-    if (!YTMU(@"YTMUltimateIsEnabled") || !YTMU(@"seekButtons")) {
-        return;
-    }
+    if (!IS_ENABLED(YTMUPKeyEnabled) || !IS_ENABLED(YTMUPKeySeekButtons)) return;
 
     YTMNowPlayingView *nowPlayingView = [self valueForKey:@"_nowPlayingView"];
+    if (!nowPlayingView) return;
 
-    if (nowPlayingView) {
-        YTMPlayerControlsView *controlsView = nowPlayingView.playerControlsView;
+    YTMPlayerControlsView *controlsView = nowPlayingView.playerControlsView;
 
-        [controlsView.prevButton removeTarget:self action:@selector(didTapPrevButton) forControlEvents:UIControlEventTouchUpInside];
-        [controlsView.nextButton removeTarget:self action:@selector(didTapNextButton) forControlEvents:UIControlEventTouchUpInside];
+    [controlsView.prevButton removeTarget:self action:@selector(didTapPrevButton) forControlEvents:UIControlEventTouchUpInside];
+    [controlsView.nextButton removeTarget:self action:@selector(didTapNextButton) forControlEvents:UIControlEventTouchUpInside];
 
-        [controlsView.prevButton addTarget:self action:@selector(didTapSeekBackwardButton) forControlEvents:UIControlEventTouchUpInside];
-        [controlsView.nextButton addTarget:self action:@selector(didTapSeekForwardButton) forControlEvents:UIControlEventTouchUpInside];
+    [controlsView.prevButton addTarget:self action:@selector(didTapSeekBackwardButton) forControlEvents:UIControlEventTouchUpInside];
+    [controlsView.nextButton addTarget:self action:@selector(didTapSeekForwardButton)  forControlEvents:UIControlEventTouchUpInside];
 
-        UILongPressGestureRecognizer *longPressPrev = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPressPrev:)];
-        [longPressPrev setMinimumPressDuration:0.5];
-        [controlsView.prevButton addGestureRecognizer:longPressPrev];
+    UILongPressGestureRecognizer *longPressPrev = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPressPrev:)];
+    longPressPrev.minimumPressDuration = 0.5;
+    [controlsView.prevButton addGestureRecognizer:longPressPrev];
 
-        UILongPressGestureRecognizer *longPressNext = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPressNext:)];
-        [longPressNext setMinimumPressDuration:0.5];
-        [controlsView.nextButton addGestureRecognizer:longPressNext];
+    UILongPressGestureRecognizer *longPressNext = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPressNext:)];
+    longPressNext.minimumPressDuration = 0.5;
+    [controlsView.nextButton addGestureRecognizer:longPressNext];
 
-        NSInteger backValue = seekTime() == 0 ? 10 : seekTime();
-        NSInteger forwardValue = seekTime() == 0 ? 30 : seekTime();
+    NSInteger backValue    = ytmupSeekTime() == 0 ? 10 : ytmupSeekTime();
+    NSInteger forwardValue = ytmupSeekTime() == 0 ? 30 : ytmupSeekTime();
 
-        YTAssetLoader *al = [[%c(YTAssetLoader) alloc] initWithBundle:[NSBundle mainBundle]];
+    YTAssetLoader *al = [[%c(YTAssetLoader) alloc] initWithBundle:[NSBundle mainBundle]];
+    UIImage *backImage    = [al imageNamed:[NSString stringWithFormat:@"ic_seek_back_%ld_40",    (long)backValue]];
+    UIImage *forwardImage = [al imageNamed:[NSString stringWithFormat:@"ic_seek_forward_%ld_40", (long)forwardValue]];
 
-        UIImage *backImage = [al imageNamed:[NSString stringWithFormat:@"ic_seek_back_%ld_40", backValue]];
-        UIImage *forwardImage = [al imageNamed:[NSString stringWithFormat:@"ic_seek_forward_%ld_40", forwardValue]];
-
-        [controlsView.prevButton setImage:backImage forState:UIControlStateNormal];
-        [controlsView.prevButton setImage:backImage forState:UIControlStateSelected];
-        [controlsView.nextButton setImage:forwardImage forState:UIControlStateNormal];
-        [controlsView.nextButton setImage:forwardImage forState:UIControlStateSelected];
-    }
+    [controlsView.prevButton setImage:backImage    forState:UIControlStateNormal];
+    [controlsView.prevButton setImage:backImage    forState:UIControlStateSelected];
+    [controlsView.nextButton setImage:forwardImage forState:UIControlStateNormal];
+    [controlsView.nextButton setImage:forwardImage forState:UIControlStateSelected];
 }
-
-// - (void)didTapPrevButton {
-//     YTMU(@"YTMUltimateIsEnabled") && YTMU(@"seekButtons") ? [self didTapSeekBackwardButton] : %orig;
-// }
-
-// - (void)didTapNextButton {
-//     YTMU(@"YTMUltimateIsEnabled") && YTMU(@"seekButtons") ? [self didTapSeekForwardButton] : %orig;
-// }
 
 %new
 - (void)longPressPrev:(UILongPressGestureRecognizer *)gesture {
-    if (gesture.state == UIGestureRecognizerStateBegan) {
-        [self didTapPrevButton];
-    }
+    if (gesture.state == UIGestureRecognizerStateBegan) [self didTapPrevButton];
 }
 
 %new
 - (void)longPressNext:(UILongPressGestureRecognizer *)gesture {
-    if (gesture.state == UIGestureRecognizerStateBegan) {
-        [self didTapNextButton];
-    }
+    if (gesture.state == UIGestureRecognizerStateBegan) [self didTapNextButton];
 }
 %end
 
 %hook YTColdConfig
 - (NSInteger)iosPlayerClientSharedConfigTransportControlsSeekForwardTime {
-    return (seekTime() == 0) ? %orig : seekTime();
+    return ytmupSeekTime() == 0 ? %orig : ytmupSeekTime();
 }
-
 - (NSInteger)iosPlayerClientSharedConfigTransportControlsSeekBackwardTime {
-    return (seekTime() == 0) ? %orig : seekTime();
+    return ytmupSeekTime() == 0 ? %orig : ytmupSeekTime();
 }
 %end

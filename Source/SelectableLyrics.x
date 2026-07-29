@@ -1,16 +1,11 @@
 #import <UIKit/UIKit.h>
+#import "../YTMUPKeys.h"
 
-static BOOL YTMU(NSString *key) {
-    NSDictionary *YTMUltimateDict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"YTMUltimate"];
-    return [YTMUltimateDict[key] boolValue];
+static BOOL selectableLyricsEnabled(void) {
+    return IS_ENABLED(YTMUPKeyEnabled) && IS_ENABLED(YTMUPKeySelectableLyrics);
 }
 
-static BOOL selectableLyrics(void) {
-    return YTMU(@"YTMUltimateIsEnabled") && YTMU(@"selectableLyrics");
-}
-
-@interface YTFormattedStringLabel : UILabel
-@end
+@interface YTFormattedStringLabel : UILabel @end
 
 @interface YTMLightweightMusicDescriptionShelfCell : UIView
 @property (retain, nonatomic) UITextView *lyrics;
@@ -22,12 +17,12 @@ static BOOL selectableLyrics(void) {
 
 - (id)initWithFrame:(CGRect)frame {
     self = %orig;
-    if (self && selectableLyrics()) {
+    if (self && selectableLyricsEnabled()) {
         UIView *container = [self valueForKey:@"_descriptionContainer"];
         self.lyrics = [[UITextView alloc] init];
-        self.lyrics.backgroundColor = [UIColor clearColor];
-        self.lyrics.editable = NO;
-        self.lyrics.scrollEnabled = NO;
+        self.lyrics.backgroundColor          = [UIColor clearColor];
+        self.lyrics.editable                 = NO;
+        self.lyrics.scrollEnabled            = NO;
         self.lyrics.showsVerticalScrollIndicator = NO;
         [container addSubview:self.lyrics];
     }
@@ -36,23 +31,21 @@ static BOOL selectableLyrics(void) {
 
 - (void)setRenderer:(id)renderer {
     %orig;
-
-    if (selectableLyrics()) {
-        YTFormattedStringLabel *lyrics = [self valueForKey:@"_descriptionLabel"];
-        lyrics.userInteractionEnabled = YES;
-        lyrics.hidden = YES;
-        self.lyrics.font = lyrics.font;
-        self.lyrics.textColor = lyrics.textColor;
-        self.lyrics.attributedText = lyrics.attributedText;
+    if (selectableLyricsEnabled()) {
+        YTFormattedStringLabel *lbl = [self valueForKey:@"_descriptionLabel"];
+        lbl.userInteractionEnabled = YES;
+        lbl.hidden = YES;
+        self.lyrics.font           = lbl.font;
+        self.lyrics.textColor      = lbl.textColor;
+        self.lyrics.attributedText = lbl.attributedText;
     }
 }
 
 - (void)layoutSubviews {
     %orig;
-
-    if (selectableLyrics()) {
-        YTFormattedStringLabel *lyrics = [self valueForKey:@"_descriptionLabel"];
-        self.lyrics.frame = lyrics.frame;
+    if (selectableLyricsEnabled()) {
+        YTFormattedStringLabel *lbl = [self valueForKey:@"_descriptionLabel"];
+        self.lyrics.frame = lbl.frame;
     }
 }
 

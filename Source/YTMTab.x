@@ -3,11 +3,7 @@
 #import "Headers/YTIPivotBarSupportedRenderers.h"
 #import "Headers/YTAssetLoader.h"
 #import "Prefs/YTMDownloads.h"
-
-static BOOL YTMU(NSString *key) {
-    NSDictionary *YTMUltimateDict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"YTMUltimate"];
-    return [YTMUltimateDict[key] boolValue];
-}
+#import "YTMUPKeys.h"
 
 %hook YTMPivotBarItemStyle
 - (UIImage *)pivotBarItemIconImageWithIconType:(int)type color:(UIColor *)color useNewIcons:(BOOL)isNew selected:(BOOL)isSelected {
@@ -26,7 +22,7 @@ static BOOL YTMU(NSString *key) {
 // https://gist.github.com/BandarHL/dce564ab717bed93d479fe849d654c75
 %hook YTPivotBarView
 - (void)setRenderer:(YTIPivotBarRenderer *)renderer {
-    if (YTMU(@"YTMUltimateIsEnabled") && !YTMU(@"hideDownloadsTab")) {
+    if (IS_ENABLED(YTMUPKeyEnabled) && !IS_ENABLED(YTMUPKeyHideDownloadsTab)) {
         YTIIcon *ytmuIcon = [%c(YTIIcon) new];
         ytmuIcon.iconType = 1;
 
@@ -68,7 +64,7 @@ static BOOL YTMU(NSString *key) {
 - (void)viewDidLoad {
     %orig;
 
-    if (YTMU(@"YTMUltimateIsEnabled") && !YTMU(@"hideDownloadsTab")) {
+    if (IS_ENABLED(YTMUPKeyEnabled) && !IS_ENABLED(YTMUPKeyHideDownloadsTab)) {
         YTICommand *navEndpoint = nil;
 
         if (class_getInstanceVariable([self class], "_navEndpoint") != NULL) {
