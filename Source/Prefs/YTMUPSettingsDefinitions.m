@@ -335,10 +335,9 @@ static void YTMUPRegisterNavBarSettings(void) {
         sectionWithHeader:nil
                    footer:nil
                     items:@[
-        YTMUP_TOGGLE(@"DONT_STICK_HEADERS",  @"DONT_STICK_HEADERS_DESC",  @"pin.slash",          YTMUPKeyNoStickyHeaders),
-        YTMUP_TOGGLE(@"HIDE_HISTORY_BUTTON", @"HIDE_HISTORY_BUTTON_DESC", @"clock.arrow.circlepath", YTMUPKeyHideHistoryButton),
-        YTMUP_TOGGLE(@"HIDE_CAST_BUTTON",    @"HIDE_CAST_BUTTON_DESC",    @"airplayaudio",       YTMUPKeyHideCastButton),
-        YTMUP_TOGGLE(@"HIDE_FILTER_BUTTON",  @"HIDE_FILTER_BUTTON_DESC",  @"line.3.horizontal.decrease.circle", YTMUPKeyHideFilterButton),
+        YTMUP_TOGGLE(@"HIDE_YTM_LOGO",  @"HIDE_YTM_LOGO_DESC",  nil,          YTMUPKeyHideYTMLogo),
+        YTMUP_TOGGLE(@"HIDE_SUBBAR", @"HIDE_SUBBAR_DESC", nil, YTMUPKeyHideSubbar),
+        YTMUP_TOGGLE(@"HIDE_NOTI_BUTTON",    @"HIDE_NOTI_BUTTON_DESC",    nil,       YTMUPKeyHideNotiButton),
     ]];
 
     [[YTMUPSettingsRegistry sharedRegistry]

@@ -25,21 +25,11 @@
 %end
 
 %hook YTIPlayerResponse
-- (BOOL)isMonetized {
-    return NO;
-}
-- (id)paidContentOverlayElementRendererOptions {
-    return nil;
-}
-- (BOOL)isCuepointAdsEnabled {
-    return NO;
-}
-- (id)adIntroRenderer {
-    return nil;
-}
-- (BOOL)isDAIEnabledPlayback {
-    return YES;
-}
+- (BOOL)isMonetized { return NO; }
+- (id)paidContentOverlayElementRendererOptions { return nil; }
+- (BOOL)isCuepointAdsEnabled { return NO; }
+- (id)adIntroRenderer { return nil; }
+- (BOOL)isDAIEnabledPlayback { return YES; }
 %end
 
 %hook YTIClientMdxGlobalConfig
@@ -71,7 +61,6 @@
 - (BOOL)canShowThrottledPromoWithFrequencyCaps:(id)arg1 { return NO; }
 %end
 
-/* TEMP-DISABLED
 %hook YTIShowFullscreenInterstitialCommand
 - (BOOL)shouldThrottleInterstitial {
     if (self.hasModalClientThrottlingRules)
@@ -79,7 +68,6 @@
     return %orig;
 }
 %end
-*/
 
 // Survey
 %hook YTSurveyController

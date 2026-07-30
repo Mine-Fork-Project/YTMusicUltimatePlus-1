@@ -1,41 +1,5 @@
-/**
- * YTMUPKeys.h
- * ─────────────────────────────────────────────────────────────────────────────
- * Single source of truth for every NSUserDefaults key used by YTMusicUltimatePlus,
- * plus the read-access macros.
- *
- * ALL keys are stored directly in [NSUserDefaults standardUserDefaults] (no
- * wrapping dictionary) and carry the "YTMUP" prefix so they are namespaced and
- * will never collide with system or app keys.
- *
- * ── Read macros ──────────────────────────────────────────────────────────────
- *   IS_ENABLED(k)      → BOOL   (boolForKey:)
- *   INTFORVAL(k)       → NSInteger (integerForKey:)
- *   FLOAT_FOR_KEY(k)   → float  (floatForKey:)
- *   STRING_FOR_KEY(k)  → NSString * nullable (stringForKey:)
- *
- * Usage example:
- *   if (IS_ENABLED(YTMUPKeyNoAds)) { … }
- *   NSInteger mode = INTFORVAL(YTMUPKeyAudioVideoMode);
- */
-
-#pragma once
-#import <Foundation/Foundation.h>
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Read-access macros
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Reads a BOOL value directly from NSUserDefaults.
 #define IS_ENABLED(k)       [[NSUserDefaults standardUserDefaults] boolForKey:(k)]
-
-/// Reads an NSInteger value directly from NSUserDefaults.
-#define INTFORVAL(k)        [[NSUserDefaults standardUserDefaults] integerForKey:(k)]
-
-/// Reads a float value directly from NSUserDefaults.
 #define FLOAT_FOR_KEY(k)    [[NSUserDefaults standardUserDefaults] floatForKey:(k)]
-
-/// Reads an NSString value directly from NSUserDefaults (may be nil).
 #define STRING_FOR_KEY(k)   [[NSUserDefaults standardUserDefaults] stringForKey:(k)]
 
 
@@ -132,6 +96,12 @@
 
 /// Disable sticky section headers.
 #define YTMUPKeyNoStickyHeaders         @"YTMUPNoStickyHeaders"
+
+#define YTMUPKeyHideYTMLogo @"YTMUPKeyHideYTMLogo"
+
+#define YTMUPKeyHideSubbar @"YTMUPKeyHideSubbar"
+
+#define YTMUPKeyHideNotiButton @"YTMUPKeyHideNotiButton"
 
 /// Hide the history button from the navigation bar.
 #define YTMUPKeyHideHistoryButton       @"YTMUPHideHistoryButton"

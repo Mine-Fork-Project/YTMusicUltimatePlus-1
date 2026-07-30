@@ -5,7 +5,7 @@ PACKAGE_VERSION = 1.0.0
 
 include $(THEOS)/makefiles/common.mk
 
-TWEAK_NAME = YTMusicUltimate
+TWEAK_NAME = YTMusicUltimatePlus
 $(TWEAK_NAME)_FILES = $(wildcard Source/*.x)
 $(TWEAK_NAME)_FILES += $(shell find Source -name '*.m')
 $(TWEAK_NAME)_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -DTWEAK_VERSION=$(PACKAGE_VERSION)
