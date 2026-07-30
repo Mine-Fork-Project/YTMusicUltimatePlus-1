@@ -34,19 +34,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Toggle row.
-#define YTMUP_TOGGLE(titleKey, subtitleKey, sfSym, key) [YTMUPSettingsItem toggleWithTitle:LOC(titleKey) subtitle:LOC(subtitleKey) sfSymbol:sfSym key:key]
+#define YTMUP_TOGGLE(titleKey, subtitleKey, sfSym, pKey) [YTMUPSettingsItem toggleWithTitle:LOC(titleKey) subtitle:LOC(subtitleKey) sfSymbol:sfSym key:pKey]
 
 /// Slider row (discrete NSNumber options via variadic).
-#define YTMUP_SLIDER(titleKey, subtitleKey, sfSym, key, ...) [YTMUPSettingsItem sliderWithTitle:LOC(titleKey) subtitle:LOC(subtitleKey) sfSymbol:sfSym key:key options:@[__VA_ARGS__]]
+#define YTMUP_SLIDER(titleKey, subtitleKey, sfSym, pKey, ...) [YTMUPSettingsItem sliderWithTitle:LOC(titleKey) subtitle:LOC(subtitleKey) sfSymbol:sfSym key:pKey options:@[__VA_ARGS__]]
 
 /// Segment row — static items.
-#define YTMUP_SEGMENT(titleKey, sfSym, key, ...) [YTMUPSettingsItem segmentWithTitle:LOC(titleKey) sfSymbol:sfSym key:key items:@[__VA_ARGS__]]
+#define YTMUP_SEGMENT(titleKey, sfSym, pKey, ...) [YTMUPSettingsItem segmentWithTitle:LOC(titleKey) sfSymbol:sfSym key:pKey items:@[__VA_ARGS__]]
 
 /// Segment row — lazy items provider block.
-#define YTMUP_SEGMENT_LAZY(titleKey, sfSym, key, block) [YTMUPSettingsItem segmentWithTitle:LOC(titleKey) sfSymbol:sfSym key:key itemsProvider:block]
+#define YTMUP_SEGMENT_LAZY(titleKey, sfSym, pKey, block) [YTMUPSettingsItem segmentWithTitle:LOC(titleKey) sfSymbol:sfSym key:pKey itemsProvider:block]
 
 /// TextField row.
-#define YTMUP_TEXTFIELD(titleKey, sfSym, key, kbType, placeholder) [YTMUPSettingsItem textFieldWithTitle:LOC(titleKey) sfSymbol:sfSym key:key keyboardType:kbType placeholder:placeholder]
+#define YTMUP_TEXTFIELD(titleKey, sfSym, pKey, kbType, placeholder) [YTMUPSettingsItem textFieldWithTitle:LOC(titleKey) sfSymbol:sfSym key:pKey keyboardType:kbType placeholder:placeholder]
 
 /// Navigation row.
 #define YTMUP_NAV(titleKey, subtitleKey, sfSym, destClass) [YTMUPSettingsItem navigationWithTitle:LOC(titleKey) subtitle:LOC(subtitleKey) sfSymbol:sfSym destination:[destClass class]]
