@@ -2,6 +2,10 @@
 @interface SSOConfiguration : NSObject
 @end
 
+#import <UIKit/UIKit.h>
+#import <dlfcn.h>
+#import <Foundation/Foundation.h>
+
 #define YT_BUNDLE_ID @"com.google.ios.youtubemusic"
 #define YT_BUNDLE_NAME @"YouTubeMusic"
 #define YT_NAME @"YouTube Music"
