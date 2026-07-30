@@ -2,16 +2,12 @@
  * YTMUPSettingsDefinitions.m
  * THE SINGLE FILE THAT DEFINES ALL SETTINGS FOR EVERY PAGE.
  *
- * To add a new setting:
- *   1. Find (or create) the appropriate static void register function below.
- *   2. Add a YTMUPSettingsItem to the desired section using the convenience
- *      constructors or the helper macros at the top.
- *   3. That's it — the base controller and search bar handle everything else.
+ * NO macros are used here — all rows are constructed by calling the
+ * YTMUPSettingsItem convenience methods directly. This avoids every
+ * C-preprocessor comma / line-continuation pitfall.
  *
- * To add a new page:
- *   1. Write a new static void YTMUPRegisterXxxSettings(void) function.
- *   2. Call it inside YTMUPRegisterAllSettings().
- *   3. Create a thin YTMUPBaseSettingsController subclass that sets YTMUPPageId.
+ * To add a setting: find the right register function, add a row.
+ * To add a page:    write a new static void, call it from YTMUPRegisterAllSettings().
  */
 
 #import <UIKit/UIKit.h>
@@ -22,59 +18,32 @@
 #import "YTMUPSettingsSection.h"
 #import "YTMUPSettingsRegistry.h"
 
-// Full imports (not @class) so [DestClass class] compiles.
+// Full imports so [DestClass class] compiles (forward decl is not enough).
 #import "PremiumSettingsController.h"
 #import "PlayerSettingsController.h"
 #import "ThemeSettingsController.h"
 #import "NavBarSettingsController.h"
 #import "TabBarSettingsController.h"
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Convenience macros — single-line to avoid CRLF / line-continuation issues.
-// ─────────────────────────────────────────────────────────────────────────────
 
-/// Toggle row.
-#define YTMUP_TOGGLE(titleKey, subtitleKey, sfSym, pKey) [YTMUPSettingsItem toggleWithTitle:LOC(titleKey) subtitle:LOC(subtitleKey) sfSymbol:sfSym key:pKey]
-
-/// Slider row (discrete NSNumber options via variadic).
-#define YTMUP_SLIDER(titleKey, subtitleKey, sfSym, pKey, ...) [YTMUPSettingsItem sliderWithTitle:LOC(titleKey) subtitle:LOC(subtitleKey) sfSymbol:sfSym key:pKey options:@[__VA_ARGS__]]
-
-/// Segment row — static items.
-#define YTMUP_SEGMENT(titleKey, sfSym, pKey, ...) [YTMUPSettingsItem segmentWithTitle:LOC(titleKey) sfSymbol:sfSym key:pKey items:@[__VA_ARGS__]]
-
-/// Segment row — lazy items provider block.
-#define YTMUP_SEGMENT_LAZY(titleKey, sfSym, pKey, block) [YTMUPSettingsItem segmentWithTitle:LOC(titleKey) sfSymbol:sfSym key:pKey itemsProvider:block]
-
-/// TextField row.
-#define YTMUP_TEXTFIELD(titleKey, sfSym, pKey, kbType, placeholder) [YTMUPSettingsItem textFieldWithTitle:LOC(titleKey) sfSymbol:sfSym key:pKey keyboardType:kbType placeholder:placeholder]
-
-/// Navigation row.
-#define YTMUP_NAV(titleKey, subtitleKey, sfSym, destClass) [YTMUPSettingsItem navigationWithTitle:LOC(titleKey) subtitle:LOC(subtitleKey) sfSymbol:sfSym destination:[destClass class]]
-
-/// Action row.
-#define YTMUP_ACTION(titleKey, subtitleKey, sfSym, block) [YTMUPSettingsItem actionWithTitle:LOC(titleKey) subtitle:LOC(subtitleKey) sfSymbol:sfSym action:block]
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers for Data Management actions (broken out of blocks to avoid
-// comma-in-array-literal macro-argument parsing issues).
-// ─────────────────────────────────────────────────────────────────────────────
+// =============================================================================
+#pragma mark - Data-management helpers (static functions, not blocks)
+// =============================================================================
 
 static void ytmupExportSettings(void) {
     NSMutableDictionary *prefs = [NSMutableDictionary dictionary];
-    for (NSString *key in YTMUPAllKeys()) {
-        id val = [[NSUserDefaults standardUserDefaults] objectForKey:key];
-        if (val) prefs[key] = val;
+    for (NSString *k in YTMUPAllKeys()) {
+        id val = [[NSUserDefaults standardUserDefaults] objectForKey:k];
+        if (val) prefs[k] = val;
     }
     NSError *err = nil;
     NSData *data = [NSJSONSerialization dataWithJSONObject:prefs
                                                    options:NSJSONWritingPrettyPrinted
                                                      error:&err];
     if (!data || err) return;
-    NSString *tmpPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"YTMUPSettings.json"];
-    [data writeToFile:tmpPath atomically:YES];
-    NSURL *fileURL = [NSURL fileURLWithPath:tmpPath];
-    NSArray *items = @[fileURL];
+    NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"YTMUPSettings.json"];
+    [data writeToFile:path atomically:YES];
+    NSArray *items = @[[NSURL fileURLWithPath:path]];
     UIActivityViewController *avc = [[UIActivityViewController alloc]
         initWithActivityItems:items applicationActivities:nil];
     UIViewController *root = [UIApplication sharedApplication].keyWindow.rootViewController;
@@ -83,9 +52,7 @@ static void ytmupExportSettings(void) {
 
 static void ytmupRestoreDefaults(void) {
     NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
-    for (NSString *key in YTMUPAllKeys()) {
-        [ud removeObjectForKey:key];
-    }
+    for (NSString *k in YTMUPAllKeys()) [ud removeObjectForKey:k];
     [ud synchronize];
     UIAlertController *alert = [UIAlertController
         alertControllerWithTitle:LOC(@"RESTORE_DEFAULTS")
@@ -100,87 +67,95 @@ static void ytmupRestoreDefaults(void) {
 
 
 // =============================================================================
-#pragma mark - Main / hub settings page ("main")
+#pragma mark - Main / hub page ("main")
 // =============================================================================
 
 static void YTMUPRegisterMainSettings(void) {
 
-    // ── Section 0 — Master switch ─────────────────────────────────────────────
-    YTMUPSettingsItem *masterToggle = YTMUP_TOGGLE(@"ENABLED", @"RESTART_FOOTER", @"power", YTMUPKeyEnabled);
-    masterToggle.YTMUPTintColor = [UIColor colorWithRed:230/255.0 green:75/255.0 blue:75/255.0 alpha:1.0];
+    // ── Section 0: Master switch ──────────────────────────────────────────────
+    YTMUPSettingsItem *master = [YTMUPSettingsItem
+        toggleWithTitle:LOC(@"ENABLED")
+               subtitle:LOC(@"RESTART_FOOTER")
+               sfSymbol:@"power"
+                    key:YTMUPKeyEnabled];
+    master.YTMUPTintColor = [UIColor colorWithRed:230/255.0 green:75/255.0 blue:75/255.0 alpha:1.0];
 
     YTMUPSettingsSection *masterSection = [YTMUPSettingsSection
-        sectionWithHeader:nil footer:nil items:@[masterToggle]];
+        sectionWithHeader:nil footer:nil items:@[master]];
 
-    // ── Section 1 — Settings pages ────────────────────────────────────────────
+    // ── Section 1: Page navigation ────────────────────────────────────────────
     YTMUPSettingsSection *navSection = [YTMUPSettingsSection
-        sectionWithHeader:nil
-                   footer:nil
-                    items:@[
-        YTMUP_NAV(@"PREMIUM_SETTINGS", @"", @"flame",            PremiumSettingsController),
-        YTMUP_NAV(@"PLAYER_SETTINGS",  @"", @"play.rectangle",   PlayerSettingsController),
-        YTMUP_NAV(@"THEME_SETTINGS",   @"", @"paintbrush",       ThemeSettingsController),
-        YTMUP_NAV(@"NAVBAR_SETTINGS",  @"", @"sidebar.trailing", NavBarSettingsController),
-        YTMUP_NAV(@"TABBAR_SETTINGS",  @"", @"dock.rectangle",   OtherSettingsController),
-    ]];
+        sectionWithHeader:nil footer:nil items:@[
+            [YTMUPSettingsItem navigationWithTitle:LOC(@"PREMIUM_SETTINGS") subtitle:@"" sfSymbol:@"flame"           destination:[PremiumSettingsController class]],
+            [YTMUPSettingsItem navigationWithTitle:LOC(@"PLAYER_SETTINGS")  subtitle:@"" sfSymbol:@"play.rectangle"  destination:[PlayerSettingsController  class]],
+            [YTMUPSettingsItem navigationWithTitle:LOC(@"THEME_SETTINGS")   subtitle:@"" sfSymbol:@"paintbrush"      destination:[ThemeSettingsController   class]],
+            [YTMUPSettingsItem navigationWithTitle:LOC(@"NAVBAR_SETTINGS")  subtitle:@"" sfSymbol:@"sidebar.trailing" destination:[NavBarSettingsController  class]],
+            [YTMUPSettingsItem navigationWithTitle:LOC(@"TABBAR_SETTINGS")  subtitle:@"" sfSymbol:@"dock.rectangle"  destination:[OtherSettingsController   class]],
+        ]];
 
-    // ── Section 2 — Data Management ───────────────────────────────────────────
-    // Export
-    YTMUPSettingsItem *exportItem = YTMUP_ACTION(@"EXPORT_SETTINGS", @"EXPORT_SETTINGS_DESC", @"square.and.arrow.up", ^{ ytmupExportSettings(); });
+    // ── Section 2: Data management ────────────────────────────────────────────
+    YTMUPSettingsItem *exportItem = [YTMUPSettingsItem
+        actionWithTitle:LOC(@"EXPORT_SETTINGS")
+               subtitle:LOC(@"EXPORT_SETTINGS_DESC")
+               sfSymbol:@"square.and.arrow.up"
+                 action:^{ ytmupExportSettings(); }];
 
-    // Import — actual picker is shown by YTMUltimateSettingsController (needs delegate).
-    // The action block is nil; the hub controller intercepts via the __importSettings sentinel key.
-    YTMUPSettingsItem *importItem = YTMUP_ACTION(@"IMPORT_SETTINGS", @"IMPORT_SETTINGS_DESC", @"square.and.arrow.down", nil);
+    // Import: nil action — hub controller intercepts via __importSettings sentinel.
+    YTMUPSettingsItem *importItem = [YTMUPSettingsItem
+        actionWithTitle:LOC(@"IMPORT_SETTINGS")
+               subtitle:LOC(@"IMPORT_SETTINGS_DESC")
+               sfSymbol:@"square.and.arrow.down"
+                 action:nil];
     importItem.YTMUPDefaultsKey = @"__importSettings";
 
-    // Restore defaults
-    YTMUPSettingsItem *restoreItem = YTMUP_ACTION(@"RESTORE_DEFAULTS", @"RESTORE_DEFAULTS_DESC", @"arrow.counterclockwise", ^{ ytmupRestoreDefaults(); });
+    YTMUPSettingsItem *restoreItem = [YTMUPSettingsItem
+        actionWithTitle:LOC(@"RESTORE_DEFAULTS")
+               subtitle:LOC(@"RESTORE_DEFAULTS_DESC")
+               sfSymbol:@"arrow.counterclockwise"
+                 action:^{ ytmupRestoreDefaults(); }];
     restoreItem.YTMUPTintColor = [UIColor systemOrangeColor];
 
-    // Clear cache — sentinel key; hub controller intercepts taps.
-    YTMUPSettingsItem *clearCache = YTMUP_ACTION(@"CLEAR_CACHE", @"", @"trash", nil);
+    // Clear cache: nil action — hub controller intercepts via __clearCache sentinel.
+    YTMUPSettingsItem *clearCache = [YTMUPSettingsItem
+        actionWithTitle:LOC(@"CLEAR_CACHE")
+               subtitle:@""
+               sfSymbol:@"trash"
+                 action:nil];
     clearCache.YTMUPDefaultsKey = @"__clearCache";
     clearCache.YTMUPTintColor   = [UIColor systemRedColor];
 
     YTMUPSettingsSection *dataSection = [YTMUPSettingsSection
-        sectionWithHeader:LOC(@"DATA_MANAGEMENT")
-                   footer:nil
+        sectionWithHeader:LOC(@"DATA_MANAGEMENT") footer:nil
                     items:@[exportItem, importItem, restoreItem, clearCache]];
 
-    // ── Section 3 — Links ─────────────────────────────────────────────────────
+    // ── Section 3: Links ──────────────────────────────────────────────────────
     UIColor *blue = [UIColor systemBlueColor];
 
-    void (^loadBundleImage)(YTMUPSettingsItem *, NSString *) = ^(YTMUPSettingsItem *i, NSString *name) {
-        UIImage *raw = [UIImage imageWithContentsOfFile:
-            [NSBundle.ytmu_defaultBundle pathForResource:name ofType:@"png" inDirectory:@"icons"]];
+    void (^applyBundleImage)(YTMUPSettingsItem *, NSString *) = ^(YTMUPSettingsItem *i, NSString *name) {
+        NSString *imgPath = [NSBundle.ytmu_defaultBundle pathForResource:name ofType:@"png" inDirectory:@"icons"];
+        UIImage *raw = [UIImage imageWithContentsOfFile:imgPath];
         i.YTMUPCustomImage = [raw imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
         i.YTMUPTitleColor  = blue;
     };
-
-    void (^openURL)(NSString *) = ^(NSString *urlStr) {
-        NSURL *url = [NSURL URLWithString:urlStr];
-        if ([[UIApplication sharedApplication] canOpenURL:url]) {
-            [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
-        }
+    void (^openURL)(NSString *) = ^(NSString *url) {
+        NSURL *u = [NSURL URLWithString:url];
+        if ([[UIApplication sharedApplication] canOpenURL:u])
+            [[UIApplication sharedApplication] openURL:u options:@{} completionHandler:nil];
     };
 
-    YTMUPSettingsItem *linkGinsu     = YTMUP_ACTION(@"TWITTER",     @"TWITTER_DESC",     @"", ^{ openURL(@"https://twitter.com/ginsudev"); });
-    YTMUPSettingsItem *linkDayanch96 = YTMUP_ACTION(@"TWITTER",     @"TWITTER_DESC",     @"", ^{ openURL(@"https://twitter.com/dayanch96"); });
-    YTMUPSettingsItem *linkDiscord   = YTMUP_ACTION(@"DISCORD",     @"DISCORD_DESC",     @"", ^{ openURL(@"https://discord.gg/VN9ZSeMhEW"); });
-    YTMUPSettingsItem *linkGithub    = YTMUP_ACTION(@"SOURCE_CODE", @"SOURCE_CODE_DESC", @"", ^{ openURL(@"https://github.com/dayanch96/YTMusicUltimate"); });
+    YTMUPSettingsItem *lGinsu = [YTMUPSettingsItem actionWithTitle:[NSString stringWithFormat:LOC(@"TWITTER"), @"Ginsu"] subtitle:LOC(@"TWITTER_DESC") sfSymbol:@"" action:^{ openURL(@"https://twitter.com/ginsudev"); }];
+    YTMUPSettingsItem *lDay   = [YTMUPSettingsItem actionWithTitle:[NSString stringWithFormat:LOC(@"TWITTER"), @"Dayanch96"] subtitle:LOC(@"TWITTER_DESC") sfSymbol:@"" action:^{ openURL(@"https://twitter.com/dayanch96"); }];
+    YTMUPSettingsItem *lDisc  = [YTMUPSettingsItem actionWithTitle:LOC(@"DISCORD") subtitle:LOC(@"DISCORD_DESC") sfSymbol:@"" action:^{ openURL(@"https://discord.gg/VN9ZSeMhEW"); }];
+    YTMUPSettingsItem *lGit   = [YTMUPSettingsItem actionWithTitle:LOC(@"SOURCE_CODE") subtitle:LOC(@"SOURCE_CODE_DESC") sfSymbol:@"" action:^{ openURL(@"https://github.com/dayanch96/YTMusicUltimate"); }];
 
-    linkGinsu.YTMUPTitle     = [NSString stringWithFormat:LOC(@"TWITTER"), @"Ginsu"];
-    linkDayanch96.YTMUPTitle = [NSString stringWithFormat:LOC(@"TWITTER"), @"Dayanch96"];
-
-    loadBundleImage(linkGinsu,     @"ginsu-24@2x");
-    loadBundleImage(linkDayanch96, @"dayanch96-24@2x");
-    loadBundleImage(linkDiscord,   @"discord-24@2x");
-    loadBundleImage(linkGithub,    @"github-24@2x");
+    applyBundleImage(lGinsu, @"ginsu-24@2x");
+    applyBundleImage(lDay,   @"dayanch96-24@2x");
+    applyBundleImage(lDisc,  @"discord-24@2x");
+    applyBundleImage(lGit,   @"github-24@2x");
 
     YTMUPSettingsSection *linksSection = [YTMUPSettingsSection
-        sectionWithHeader:LOC(@"LINKS")
-                   footer:nil  // version footer injected by hub VC
-                    items:@[linkGinsu, linkDayanch96, linkDiscord, linkGithub]];
+        sectionWithHeader:LOC(@"LINKS") footer:nil   // version footer injected by hub VC
+                    items:@[lGinsu, lDay, lDisc, lGit]];
 
     [[YTMUPSettingsRegistry sharedRegistry]
         registerSections:@[masterSection, navSection, dataSection, linksSection]
@@ -189,75 +164,61 @@ static void YTMUPRegisterMainSettings(void) {
 
 
 // =============================================================================
-#pragma mark - Premium settings page ("premium")
+#pragma mark - Premium page ("premium")
 // =============================================================================
 
 static void YTMUPRegisterPremiumSettings(void) {
-
-    YTMUPSettingsSection *section = [YTMUPSettingsSection
-        sectionWithHeader:nil
-                   footer:nil
-                    items:@[
-        YTMUP_TOGGLE(@"NO_ADS",             @"NO_ADS_DESC",            @"nosign",    YTMUPKeyNoAds),
-        YTMUP_TOGGLE(@"BACKGROUND_PLAYBACK", @"BACKGROUND_PLAYBACK_DESC", @"play.fill", YTMUPKeyBackgroundPlayback),
-    ]];
-
-    [[YTMUPSettingsRegistry sharedRegistry]
-        registerSections:@[section]
-               forPageId:@"premium"];
+    YTMUPSettingsSection *s = [YTMUPSettingsSection
+        sectionWithHeader:nil footer:nil items:@[
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"NO_ADS")             subtitle:LOC(@"NO_ADS_DESC")             sfSymbol:@"nosign"    key:YTMUPKeyNoAds],
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"BACKGROUND_PLAYBACK") subtitle:LOC(@"BACKGROUND_PLAYBACK_DESC") sfSymbol:@"play.fill" key:YTMUPKeyBackgroundPlayback],
+        ]];
+    [[YTMUPSettingsRegistry sharedRegistry] registerSections:@[s] forPageId:@"premium"];
 }
 
 
 // =============================================================================
-#pragma mark - Player settings page ("player")
+#pragma mark - Player page ("player")
 // =============================================================================
 
 static void YTMUPRegisterPlayerSettings(void) {
 
-    // ── Section 0 — General player options ───────────────────────────────────
+    // Section 0 — General
     YTMUPSettingsSection *general = [YTMUPSettingsSection
-        sectionWithHeader:nil
-                   footer:nil
-                    items:@[
-        YTMUP_TOGGLE(@"DOWNLOAD_AUDIO",       @"DOWNLOAD_AUDIO_DESC",       @"square.and.arrow.down",  YTMUPKeyDownloadAudio),
-        YTMUP_TOGGLE(@"DOWNLOAD_COVER",       @"DOWNLOAD_COVER_DESC",       @"photo",                  YTMUPKeyDownloadCover),
-        YTMUP_TOGGLE(@"PLAYBACK_RATE_BUTTON", @"PLAYBACK_RATE_BUTTON_DESC", @"gauge",                  YTMUPKeyPlaybackRateButton),
-        YTMUP_TOGGLE(@"SELECTABLE_LYRICS",    @"SELECTABLE_LYRICS_DESC",    @"text.quote",             YTMUPKeySelectableLyrics),
-        YTMUP_TOGGLE(@"VOLBAR",               @"VOLBAR_DESC",               @"slider.vertical.3",      YTMUPKeyVolBar),
-        YTMUP_TOGGLE(@"NO_AUTORADIO",         @"NO_AUTORADIO_DESC",         @"shuffle",                YTMUPKeyDisableAutoRadio),
-        YTMUP_TOGGLE(@"SKIP_CONTENT_WARNING", @"SKIP_CONTENT_WARNING_DESC", @"exclamationmark.shield", YTMUPKeySkipWarning),
-    ]];
+        sectionWithHeader:nil footer:nil items:@[
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"DOWNLOAD_AUDIO")       subtitle:LOC(@"DOWNLOAD_AUDIO_DESC")       sfSymbol:@"square.and.arrow.down"  key:YTMUPKeyDownloadAudio],
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"DOWNLOAD_COVER")       subtitle:LOC(@"DOWNLOAD_COVER_DESC")       sfSymbol:@"photo"                  key:YTMUPKeyDownloadCover],
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"PLAYBACK_RATE_BUTTON") subtitle:LOC(@"PLAYBACK_RATE_BUTTON_DESC") sfSymbol:@"gauge"                  key:YTMUPKeyPlaybackRateButton],
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"SELECTABLE_LYRICS")    subtitle:LOC(@"SELECTABLE_LYRICS_DESC")    sfSymbol:@"text.quote"             key:YTMUPKeySelectableLyrics],
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"VOLBAR")               subtitle:LOC(@"VOLBAR_DESC")               sfSymbol:@"slider.vertical.3"      key:YTMUPKeyVolBar],
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"NO_AUTORADIO")         subtitle:LOC(@"NO_AUTORADIO_DESC")         sfSymbol:@"shuffle"                key:YTMUPKeyDisableAutoRadio],
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"SKIP_CONTENT_WARNING") subtitle:LOC(@"SKIP_CONTENT_WARNING_DESC") sfSymbol:@"exclamationmark.shield" key:YTMUPKeySkipWarning],
+        ]];
 
-    // ── Section 1 — Audio / Video default mode ────────────────────────────────
-    // Segment: index 0 = audio, 1 = video. Saves selectedSegmentIndex as NSInteger.
+    // Section 1 — Audio/Video mode (0 = audio, 1 = video)
+    NSArray *avItems = @[[UIImage systemImageNamed:@"music.note"], [UIImage systemImageNamed:@"film"]];
     YTMUPSettingsSection *avSection = [YTMUPSettingsSection
-        sectionWithHeader:nil
-                   footer:nil
-                    items:@[
-        YTMUP_SEGMENT(@"AV_DEFAULT_MODE", @"music.note.and.tv", YTMUPKeyAudioVideoMode,
-                      [UIImage systemImageNamed:@"music.note"],
-                      [UIImage systemImageNamed:@"film"]),
-    ]];
+        sectionWithHeader:nil footer:nil items:@[
+            [YTMUPSettingsItem segmentWithTitle:LOC(@"AV_DEFAULT_MODE") sfSymbol:@"music.note.and.tv" key:YTMUPKeyAudioVideoMode items:avItems],
+        ]];
 
-    // ── Section 2 — SponsorBlock ──────────────────────────────────────────────
+    // Section 2 — SponsorBlock
+    NSArray *sbBehaviourItems = @[LOC(@"SB_SKIP"), LOC(@"SB_ASK")];
+    NSArray *sbDurationOpts   = @[@1, @3, @5, @10, @15, @20, @30];
     YTMUPSettingsSection *sbSection = [YTMUPSettingsSection
-        sectionWithHeader:@"SponsorBlock"
-                   footer:nil
-                    items:@[
-        YTMUP_TOGGLE(@"SKIP_NONMUSIC_PARTS", @"SKIP_NONMUSIC_PARTS_DESC", @"scissors", YTMUPKeySponsorBlock),
-        YTMUP_SEGMENT(@"SB_BEHAVIOR", @"waveform.path.ecg", YTMUPKeySBSkipMode, LOC(@"SB_SKIP"), LOC(@"SB_ASK")),
-        YTMUP_SLIDER(@"SB_NOTIF_DURATION", @"", @"timer", YTMUPKeySBDuration, @1, @3, @5, @10, @15, @20, @30),
-    ]];
+        sectionWithHeader:@"SponsorBlock" footer:nil items:@[
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"SKIP_NONMUSIC_PARTS") subtitle:LOC(@"SKIP_NONMUSIC_PARTS_DESC") sfSymbol:@"scissors"         key:YTMUPKeySponsorBlock],
+            [YTMUPSettingsItem segmentWithTitle:LOC(@"SB_BEHAVIOR")        sfSymbol:@"waveform.path.ecg"             key:YTMUPKeySBSkipMode      items:sbBehaviourItems],
+            [YTMUPSettingsItem sliderWithTitle:LOC(@"SB_NOTIF_DURATION")   subtitle:@""                              sfSymbol:@"timer"           key:YTMUPKeySBDuration  options:sbDurationOpts],
+        ]];
 
-    // ── Section 3 — Seek buttons ──────────────────────────────────────────────
-    // Index 0 = default, 1 = 10 s, 2 = 20 s, 3 = 30 s, 4 = 60 s.
+    // Section 3 — Seek buttons
+    NSArray *seekItems = @[LOC(@"DEFAULT"), @"10", @"20", @"30", @"60"];
     YTMUPSettingsSection *seekSection = [YTMUPSettingsSection
-        sectionWithHeader:nil
-                   footer:LOC(@"SEEK_TIME_FOOTER")
-                    items:@[
-        YTMUP_TOGGLE(@"SEEK_BUTTONS", @"", @"goforward", YTMUPKeySeekButtons),
-        YTMUP_SEGMENT(@"DEFAULT", @"", YTMUPKeySeekTime, LOC(@"DEFAULT"), @"10", @"20", @"30", @"60"),
-    ]];
+        sectionWithHeader:nil footer:LOC(@"SEEK_TIME_FOOTER") items:@[
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"SEEK_BUTTONS") subtitle:@"" sfSymbol:@"goforward" key:YTMUPKeySeekButtons],
+            [YTMUPSettingsItem segmentWithTitle:LOC(@"DEFAULT")     sfSymbol:@""                       key:YTMUPKeySeekTime  items:seekItems],
+        ]];
 
     [[YTMUPSettingsRegistry sharedRegistry]
         registerSections:@[general, avSection, sbSection, seekSection]
@@ -266,85 +227,71 @@ static void YTMUPRegisterPlayerSettings(void) {
 
 
 // =============================================================================
-#pragma mark - Theme settings page ("theme")
+#pragma mark - Theme page ("theme")
 // =============================================================================
 
 static void YTMUPRegisterThemeSettings(void) {
-
-    YTMUPSettingsSection *section = [YTMUPSettingsSection
-        sectionWithHeader:nil
-                   footer:nil
-                    items:@[
-        YTMUP_TOGGLE(@"OLED_DARK_THEME",    @"OLED_DARK_THEME_DESC",    @"moon.fill",              YTMUPKeyOledTheme),
-        YTMUP_TOGGLE(@"OLED_DARK_KEYBOARD", @"OLED_DARK_KEYBOARD_DESC", @"keyboard",               YTMUPKeyOledKeyboard),
-        YTMUP_TOGGLE(@"LOW_CONTRAST",       @"LOW_CONTRAST_DESC",       @"circle.lefthalf.filled", YTMUPKeyLowContrast),
-    ]];
-
-    [[YTMUPSettingsRegistry sharedRegistry]
-        registerSections:@[section]
-               forPageId:@"theme"];
+    YTMUPSettingsSection *s = [YTMUPSettingsSection
+        sectionWithHeader:nil footer:nil items:@[
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"OLED_DARK_THEME")    subtitle:LOC(@"OLED_DARK_THEME_DESC")    sfSymbol:@"moon.fill"              key:YTMUPKeyOledTheme],
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"OLED_DARK_KEYBOARD") subtitle:LOC(@"OLED_DARK_KEYBOARD_DESC") sfSymbol:@"keyboard"               key:YTMUPKeyOledKeyboard],
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"LOW_CONTRAST")       subtitle:LOC(@"LOW_CONTRAST_DESC")       sfSymbol:@"circle.lefthalf.filled" key:YTMUPKeyLowContrast],
+        ]];
+    [[YTMUPSettingsRegistry sharedRegistry] registerSections:@[s] forPageId:@"theme"];
 }
 
 
 // =============================================================================
-#pragma mark - NavBar settings page ("navbar")
+#pragma mark - NavBar page ("navbar")
 // =============================================================================
 
 static void YTMUPRegisterNavBarSettings(void) {
-
-    YTMUPSettingsSection *section = [YTMUPSettingsSection
-        sectionWithHeader:nil
-                   footer:nil
-                    items:@[
-        YTMUP_TOGGLE(@"DONT_STICK_HEADERS",  @"DONT_STICK_HEADERS_DESC",  @"pin.slash",                         YTMUPKeyNoStickyHeaders),
-        YTMUP_TOGGLE(@"HIDE_HISTORY_BUTTON", @"HIDE_HISTORY_BUTTON_DESC", @"clock.arrow.circlepath",            YTMUPKeyHideHistoryButton),
-        YTMUP_TOGGLE(@"HIDE_CAST_BUTTON",    @"HIDE_CAST_BUTTON_DESC",    @"airplayaudio",                      YTMUPKeyHideCastButton),
-        YTMUP_TOGGLE(@"HIDE_FILTER_BUTTON",  @"HIDE_FILTER_BUTTON_DESC",  @"line.3.horizontal.decrease.circle", YTMUPKeyHideFilterButton),
-    ]];
-
-    [[YTMUPSettingsRegistry sharedRegistry]
-        registerSections:@[section]
-               forPageId:@"navbar"];
+    YTMUPSettingsSection *s = [YTMUPSettingsSection
+        sectionWithHeader:nil footer:nil items:@[
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"DONT_STICK_HEADERS")  subtitle:LOC(@"DONT_STICK_HEADERS_DESC")  sfSymbol:@"pin.slash"                         key:YTMUPKeyNoStickyHeaders],
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"HIDE_HISTORY_BUTTON") subtitle:LOC(@"HIDE_HISTORY_BUTTON_DESC") sfSymbol:@"clock.arrow.circlepath"            key:YTMUPKeyHideHistoryButton],
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"HIDE_CAST_BUTTON")    subtitle:LOC(@"HIDE_CAST_BUTTON_DESC")    sfSymbol:@"airplayaudio"                      key:YTMUPKeyHideCastButton],
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"HIDE_FILTER_BUTTON")  subtitle:LOC(@"HIDE_FILTER_BUTTON_DESC")  sfSymbol:@"line.3.horizontal.decrease.circle" key:YTMUPKeyHideFilterButton],
+        ]];
+    [[YTMUPSettingsRegistry sharedRegistry] registerSections:@[s] forPageId:@"navbar"];
 }
 
 
 // =============================================================================
-#pragma mark - TabBar settings page ("tabbar")
+#pragma mark - TabBar page ("tabbar")
 // =============================================================================
 
 static void YTMUPRegisterTabBarSettings(void) {
 
-    // ── Section 0 — Startup tab ───────────────────────────────────────────────
-    // Items loaded lazily so YTAssetLoader is ready when the cell builds.
-    YTMUPSettingsItem *startupSeg = YTMUP_SEGMENT_LAZY(@"STARTUP_TAB", nil, YTMUPKeyStartupPage, ^NSArray * {
+    // Section 0 — Startup tab
+    // itemsProvider block is stored and called lazily when the cell builds,
+    // so YTAssetLoader is ready by then.
+    NSArray *(^startupProvider)(void) = ^NSArray *(void) {
         YTAssetLoader *appAL = [[NSClassFromString(@"YTAssetLoader") alloc] initWithBundle:[NSBundle mainBundle]];
         YTAssetLoader *dlAL  = [[NSClassFromString(@"YTAssetLoader") alloc] initWithBundle:NSBundle.ytmu_defaultBundle];
-        return @[
-            [appAL imageNamed:@"yt_outline_home_24pt"],
-            [appAL imageNamed:@"youtube_outline/samples_24pt"],
-            [appAL imageNamed:@"yt_outline_compass_24pt"],
-            [appAL imageNamed:@"yt_outline_library_music_24pt"],
-            [dlAL  imageNamed:@"icons/downloads"],
-        ];
-    });
+        UIImage *home     = [appAL imageNamed:@"yt_outline_home_24pt"];
+        UIImage *samples  = [appAL imageNamed:@"youtube_outline/samples_24pt"];
+        UIImage *explore  = [appAL imageNamed:@"yt_outline_compass_24pt"];
+        UIImage *library  = [appAL imageNamed:@"yt_outline_library_music_24pt"];
+        UIImage *downloads = [dlAL imageNamed:@"icons/downloads"];
+        return @[home, samples, explore, library, downloads];
+    };
+    YTMUPSettingsItem *startupSeg = [YTMUPSettingsItem
+        segmentWithTitle:LOC(@"STARTUP_TAB") sfSymbol:nil key:YTMUPKeyStartupPage itemsProvider:startupProvider];
 
     YTMUPSettingsSection *startupSection = [YTMUPSettingsSection
-        sectionWithHeader:LOC(@"STARTUP_TAB")
-                   footer:nil
-                    items:@[startupSeg]];
+        sectionWithHeader:LOC(@"STARTUP_TAB") footer:nil items:@[startupSeg]];
 
-    // ── Section 1 — Tab visibility toggles ───────────────────────────────────
+    // Section 1 — Tab visibility
     YTMUPSettingsSection *tabsSection = [YTMUPSettingsSection
-        sectionWithHeader:LOC(@"TAB_SETTINGS")
-                   footer:nil
-                    items:@[
-        YTMUP_TOGGLE(@"REMOVE_TABBAR_LABELS", @"", @"textformat.size",   YTMUPKeyNoTabBarLabels),
-        YTMUP_TOGGLE(@"HIDE_HOME",            @"", @"house",             YTMUPKeyHideHomeTab),
-        YTMUP_TOGGLE(@"HIDE_SAMPLES",         @"", @"waveform",          YTMUPKeyHideSamplesTab),
-        YTMUP_TOGGLE(@"HIDE_EXPLORE",         @"", @"safari",            YTMUPKeyHideExploreTab),
-        YTMUP_TOGGLE(@"HIDE_LIBRARY",         @"", @"books.vertical",    YTMUPKeyHideLibraryTab),
-        YTMUP_TOGGLE(@"HIDE_DOWNLOADS",       @"", @"arrow.down.circle", YTMUPKeyHideDownloadsTab),
-    ]];
+        sectionWithHeader:LOC(@"TAB_SETTINGS") footer:nil items:@[
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"REMOVE_TABBAR_LABELS") subtitle:@"" sfSymbol:@"textformat.size"   key:YTMUPKeyNoTabBarLabels],
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"HIDE_HOME")            subtitle:@"" sfSymbol:@"house"             key:YTMUPKeyHideHomeTab],
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"HIDE_SAMPLES")         subtitle:@"" sfSymbol:@"waveform"          key:YTMUPKeyHideSamplesTab],
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"HIDE_EXPLORE")         subtitle:@"" sfSymbol:@"safari"            key:YTMUPKeyHideExploreTab],
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"HIDE_LIBRARY")         subtitle:@"" sfSymbol:@"books.vertical"    key:YTMUPKeyHideLibraryTab],
+            [YTMUPSettingsItem toggleWithTitle:LOC(@"HIDE_DOWNLOADS")       subtitle:@"" sfSymbol:@"arrow.down.circle" key:YTMUPKeyHideDownloadsTab],
+        ]];
 
     [[YTMUPSettingsRegistry sharedRegistry]
         registerSections:@[startupSection, tabsSection]
