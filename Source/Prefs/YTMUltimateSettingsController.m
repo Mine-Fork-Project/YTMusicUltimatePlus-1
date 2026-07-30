@@ -112,12 +112,13 @@ didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
 
     // Intercept Import Settings — need to set self as the picker delegate.
     if (item.YTMUPType == YTMUPItemTypeAction &&
-        [item.YTMUPTitle isEqualToString:LOC(@"IMPORT_SETTINGS")]) {
+        [item.YTMUPDefaultsKey isEqualToString:@"__importSettings"]) {
 
         [tableView deselectRowAtIndexPath:indexPath animated:YES];
 
+        NSArray *types = @[@"public.json", @"public.text"];
         UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc]
-            initWithDocumentTypes:@[@"public.json", @"public.text"]
+            initWithDocumentTypes:types
                            inMode:UIDocumentPickerModeImport];
         picker.delegate = self;
         [self presentViewController:picker animated:YES completion:nil];
