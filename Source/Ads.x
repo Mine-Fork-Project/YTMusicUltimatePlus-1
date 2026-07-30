@@ -1,4 +1,5 @@
 #import <Foundation/Foundation.h>
+#import "Headers/YTIShowFullscreenInterstitialCommand.h"
 
 %hook YTAdsInnerTubeContextDecorator
 - (void)decorateContext:(id)context { 
