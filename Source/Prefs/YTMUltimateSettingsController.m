@@ -1,7 +1,7 @@
 #import "YTMUltimateSettingsController.h"
 #import "../YTMUPKeys.h"
 
-@implementation YTMUltimateSettingsController <UIDocumentPickerDelegate>
+@implementation YTMUltimateSettingsController
 
 // ─────────────────────────────────────────────────────────────────────────────
 #pragma mark - Lifecycle

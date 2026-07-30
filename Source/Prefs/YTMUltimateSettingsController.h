@@ -14,5 +14,5 @@
  *   • A live-computed version footer on the last section
  *   • The cache-clear activity-indicator behaviour
  */
-@interface YTMUltimateSettingsController : YTMUPBaseSettingsController
+@interface YTMUltimateSettingsController : YTMUPBaseSettingsController <UIDocumentPickerDelegate>
 @end
