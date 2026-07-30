@@ -1,6 +1,7 @@
 #define IS_ENABLED(k)       [[NSUserDefaults standardUserDefaults] boolForKey:(k)]
 #define FLOAT_FOR_KEY(k)    [[NSUserDefaults standardUserDefaults] floatForKey:(k)]
 #define STRING_FOR_KEY(k)   [[NSUserDefaults standardUserDefaults] stringForKey:(k)]
+#define INTFORVAL(v) [[NSUserDefaults standardUserDefaults] integerForKey:v]
 
 
 // ─────────────────────────────────────────────────────────────────────────────
