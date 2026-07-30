@@ -1,10 +1,10 @@
 // From YouMod
-@interface SSOConfiguration : NSObject
-@end
-
 #import <UIKit/UIKit.h>
 #import <dlfcn.h>
 #import <Foundation/Foundation.h>
+
+@interface SSOConfiguration : NSObject
+@end
 
 #define YT_BUNDLE_ID @"com.google.ios.youtubemusic"
 #define YT_BUNDLE_NAME @"YouTubeMusic"
